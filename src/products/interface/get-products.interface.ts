@@ -1,6 +1,7 @@
 export interface GetProductsFilterInput {
   keyword?: string;
   categoryId?: string;
+  storeId?: string;
   minPrice?: number;
   maxPrice?: number;
   status?: 'active' | 'out_of_stock' | 'hidden';
