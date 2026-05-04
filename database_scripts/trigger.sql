@@ -1,4 +1,4 @@
-USE shopee_pro_max;
+USE db_assignment_2;
 
 DROP TRIGGER IF EXISTS trg_Update_Total_Amount_After_Insert;
 DROP TRIGGER IF EXISTS trg_Update_Total_Amount_After_Update;
