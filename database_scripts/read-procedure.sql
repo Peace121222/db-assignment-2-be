@@ -7,6 +7,7 @@ DROP PROCEDURE IF EXISTS sp_Get_Products_By_Filter //
 CREATE PROCEDURE sp_Get_Products_By_Filter(
     IN p_keyword VARCHAR(255),
     IN p_category_id_val VARCHAR(36),
+    IN p_store_id_val VARCHAR(36),
     IN p_min_price DECIMAL(15,2),
     IN p_max_price DECIMAL(15,2),
     IN p_status_val VARCHAR(20),
@@ -27,6 +28,7 @@ BEGIN
     WHERE p.is_deleted = FALSE 
       AND (p_keyword IS NULL OR p.name LIKE CONCAT('%', p_keyword, '%'))
       AND (p_category_id_val IS NULL OR p.category_id = p_category_id_val)
+      AND (p_store_id_val IS NULL OR p.store_id = p_store_id_val)
       AND (p_min_price IS NULL OR p.base_price >= p_min_price)
       AND (p_max_price IS NULL OR p.base_price <= p_max_price)
       AND (p_status_val IS NULL OR p.status = p_status_val)

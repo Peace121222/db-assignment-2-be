@@ -37,6 +37,11 @@ export class GetProductsRequestDto {
 
   @Expose()
   @IsOptional()
+  @IsUUID('4')
+  storeId?: string;
+
+  @Expose()
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   minPrice?: number;

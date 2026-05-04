@@ -110,16 +110,18 @@ export class ProductsService {
   ): Promise<ProductResponseItem[]> {
     const keyword = input.keyword || null;
     const categoryId = input.categoryId || null;
+    const storeId = input.storeId || null;
     const minPrice = input.minPrice ?? null;
     const maxPrice = input.maxPrice ?? null;
     const status = input.status || null;
     const sortBy = input.sortBy || 'created_at';
     const sortOrder = input.sortOrder || 'DESC';
 
-    const sql = `CALL sp_Get_Products_By_Filter(?, ?, ?, ?, ?, ?, ?)`;
+    const sql = `CALL sp_Get_Products_By_Filter(?, ?, ?, ?, ?, ?, ?, ?)`;
     const params = [
       keyword,
       categoryId,
+      storeId || null,
       minPrice,
       maxPrice,
       status,
