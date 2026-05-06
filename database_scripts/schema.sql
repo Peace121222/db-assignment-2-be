@@ -100,7 +100,7 @@ CREATE TABLE PRODUCT (
     category_id VARCHAR(36) NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    base_price DECIMAL(15,2) NOT NULL,
+    base_price DECIMAL(15,2) NOT NULL CHECK (base_price >= 0),
     status ENUM('active', 'out_of_stock', 'hidden') DEFAULT 'active',
     is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -116,7 +116,7 @@ CREATE TABLE PRODUCT_VARIANT (
     sku VARCHAR(50) UNIQUE,
     options VARCHAR(255),
     price_adj DECIMAL(15,2) DEFAULT 0,
-    stock INT DEFAULT 0,
+    stock INT DEFAULT 0 CHECK (stock >= 0),
     variant_image_url VARCHAR(255),
     is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -152,7 +152,11 @@ CREATE TABLE VOUCHER (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL DEFAULT NULL,
-    FOREIGN KEY (store_id) REFERENCES STORE(store_id)
+    FOREIGN KEY (store_id) REFERENCES STORE(store_id),
+    CONSTRAINT chk_voucher_discount CHECK (
+        (discount_type = 'percent' AND discount_val > 0 AND discount_val <= 100) OR 
+        (discount_type = 'fixed' AND discount_val > 0)
+    )
 );
 
 CREATE TABLE VOUCHER_WALLET (
@@ -205,7 +209,7 @@ CREATE TABLE CART (
 CREATE TABLE CART_ITEM (
     cart_id VARCHAR(36),
     variant_id VARCHAR(36),
-    quantity INT DEFAULT 1,
+    quantity INT DEFAULT 1 CHECK (quantity > 0),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (cart_id, variant_id),
@@ -221,6 +225,7 @@ CREATE TABLE CUSTOMER_ORDER (
     total_amount DECIMAL(15,2) DEFAULT 0,
     shipping_address_snapshot JSON NOT NULL,
     status ENUM('pending', 'paid', 'shipping', 'completed', 'cancelled') DEFAULT 'pending',
+    is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (buyer_id) REFERENCES BUYER(account_id),
@@ -230,7 +235,7 @@ CREATE TABLE CUSTOMER_ORDER (
 CREATE TABLE ORDER_ITEM (
     order_id VARCHAR(36),
     variant_id VARCHAR(36),
-    quantity INT NOT NULL,
+    quantity INT NOT NULL CHECK (quantity > 0),
     price_at_buy DECIMAL(15,2) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
