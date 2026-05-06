@@ -76,7 +76,16 @@ export class GetProductsResponseDto {
   product_name: string;
 
   @Expose()
+  description: string; // <-- Thêm trường này
+
+  @Expose()
+  category_id: string; // <-- Thêm trường này
+
+  @Expose()
   category_name: string;
+
+  @Expose()
+  store_id: string; // <-- Thêm trường này
 
   @Expose()
   store_name: string;
