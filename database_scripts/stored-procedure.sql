@@ -39,12 +39,12 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Data Validation Error: Product ID already exists!';
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM STORE WHERE store_id = p_store_id) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Data Validation Error: Referenced Store does not exist!';
+    IF NOT EXISTS (SELECT 1 FROM STORE WHERE store_id = p_store_id AND is_deleted = FALSE) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Data Validation Error: Store does not exist or has been deleted!';
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM CATEGORY WHERE category_id = p_category_id) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Data Validation Error: Referenced Category does not exist!';
+    IF NOT EXISTS (SELECT 1 FROM CATEGORY WHERE category_id = p_category_id AND is_deleted = FALSE) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Data Validation Error: Category does not exist or has been deleted!';
     END IF;
 
     START TRANSACTION;
@@ -81,12 +81,12 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Update Validation Error: Invalid Status value!';
     END IF;
 
-    IF p_store_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM STORE WHERE store_id = p_store_id) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Update Validation Error: New Store does not exist!';
+    IF p_store_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM STORE WHERE store_id = p_store_id AND is_deleted = FALSE) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Update Validation Error: New Store does not exist or has been deleted!';
     END IF;
 
-    IF p_category_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM CATEGORY WHERE category_id = p_category_id) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Update Validation Error: New Category does not exist!';
+    IF p_category_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM CATEGORY WHERE category_id = p_category_id AND is_deleted = FALSE) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Update Validation Error: New Category does not exist or has been deleted!';
     END IF;
 
     UPDATE PRODUCT 
@@ -108,6 +108,12 @@ CREATE PROCEDURE sp_delete_product(
 BEGIN
     DECLARE v_is_in_active_order INT DEFAULT 0;
 
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION 
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
     IF p_product_id IS NULL OR LENGTH(p_product_id) <> 36 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Data Validation Error: Invalid Product ID format!';
     END IF;
@@ -121,6 +127,7 @@ BEGIN
     JOIN ORDER_ITEM oi ON pv.variant_id = oi.variant_id
     JOIN CUSTOMER_ORDER co ON oi.order_id = co.order_id
     WHERE pv.product_id = p_product_id 
+      AND pv.is_deleted = FALSE
       AND co.status IN ('pending', 'paid', 'shipping');
 
     IF v_is_in_active_order > 0 THEN
@@ -128,17 +135,19 @@ BEGIN
         SET MESSAGE_TEXT = 'Business Rule Violation: Cannot delete product currently in active/shipping orders. Complete or cancel orders first!';
     END IF;
 
-    UPDATE PRODUCT
-    SET is_deleted = TRUE,
-        deleted_at = CURRENT_TIMESTAMP,
-        status = 'hidden'
-    WHERE product_id = p_product_id;
+    START TRANSACTION;
+        UPDATE PRODUCT
+        SET is_deleted = TRUE,
+            deleted_at = CURRENT_TIMESTAMP,
+            status = 'hidden'
+        WHERE product_id = p_product_id;
 
-    UPDATE PRODUCT_VARIANT
-    SET is_deleted = TRUE,
-        deleted_at = CURRENT_TIMESTAMP,
-        stock = 0
-    WHERE product_id = p_product_id;
+        UPDATE PRODUCT_VARIANT
+        SET is_deleted = TRUE,
+            deleted_at = CURRENT_TIMESTAMP,
+            stock = 0
+        WHERE product_id = p_product_id;
+    COMMIT;
 END //
 
 DELIMITER ;
