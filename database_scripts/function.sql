@@ -29,10 +29,8 @@ BEGIN
     END IF;
 
     OPEN cur_orders;
-    
     read_loop: LOOP
         FETCH cur_orders INTO v_order_amount;
-        
         IF v_done THEN
             LEAVE read_loop;
         END IF;
@@ -45,7 +43,6 @@ BEGIN
             SET v_total_points = v_total_points + FLOOR((v_order_amount / CONST_POINT_UNIT) * 2) + CONST_BONUS_POINTS;
         END IF;
     END LOOP;
-    
     CLOSE cur_orders;
 
     RETURN v_total_points;

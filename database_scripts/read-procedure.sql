@@ -45,6 +45,8 @@ BEGIN
     JOIN CATEGORY c ON p.category_id = c.category_id
     JOIN STORE s ON p.store_id = s.store_id
     WHERE p.is_deleted = FALSE 
+      AND c.is_deleted = FALSE
+      AND s.is_deleted = FALSE
       AND (p_keyword IS NULL OR p.name LIKE CONCAT('%', p_keyword, '%'))
       AND (p_category_id_val IS NULL OR p.category_id = p_category_id_val)
       AND (p_store_id_val IS NULL OR p.store_id = p_store_id_val)
@@ -74,8 +76,8 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Validation Error: Store ID cannot be null!';
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM STORE WHERE store_id = p_store_id) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Validation Error: The specified Store ID does not exist!';
+    IF NOT EXISTS (SELECT 1 FROM STORE WHERE store_id = p_store_id AND is_deleted = FALSE) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Validation Error: The specified Store ID does not exist or has been deleted!';
     END IF;
 
     IF p_start_date IS NOT NULL AND p_end_date IS NOT NULL AND p_start_date > p_end_date THEN
