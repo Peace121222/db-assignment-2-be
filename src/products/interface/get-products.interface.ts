@@ -12,7 +12,10 @@ export interface GetProductsFilterInput {
 export interface ProductResponseItem {
   product_id: string;
   product_name: string;
+  description: string; // <-- Thêm trường này
+  category_id: string; // <-- Thêm trường này
   category_name: string;
+  store_id: string; // <-- Thêm trường này
   store_name: string;
   base_price: string;
   status: string;

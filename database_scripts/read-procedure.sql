@@ -24,12 +24,10 @@ CREATE PROCEDURE sp_Get_Products_By_Filter(
     IN p_sort_dir VARCHAR(10)
 )
 BEGIN
-    -- 1. Input Validation: Logical Boundaries
     IF p_min_price IS NOT NULL AND p_max_price IS NOT NULL AND p_min_price > p_max_price THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Validation Error: Minimum price cannot be greater than maximum price!';
     END IF;
 
-    -- 2. Input Validation: Sort Parameters (Prevent unexpected behavior)
     IF p_sort_by IS NOT NULL AND p_sort_by NOT IN ('price', 'name', 'created_at') THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Validation Error: Invalid sort_by parameter. Allowed values: price, name, created_at.';
     END IF;
@@ -38,16 +36,17 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Validation Error: Invalid sort_dir parameter. Allowed values: ASC, DESC.';
     END IF;
 
-    -- 3. Input Validation: Status Values
     IF p_status_val IS NOT NULL AND p_status_val NOT IN ('active', 'hidden', 'out_of_stock') THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Validation Error: Invalid status value!';
     END IF;
 
-    -- 4. Execute Dynamic Query
     SELECT 
         p.product_id,
         p.name AS product_name,
+        p.description,
+        p.category_id,
         c.name AS category_name,
+        p.store_id,
         s.store_name,
         p.base_price,
         p.status
@@ -61,13 +60,21 @@ BEGIN
       AND (p_min_price IS NULL OR p.base_price >= p_min_price)
       AND (p_max_price IS NULL OR p.base_price <= p_max_price)
       AND (p_status_val IS NULL OR p.status = p_status_val)
-    -- Complex Sorting Logic using CASE
     ORDER BY
-      CASE WHEN p_sort_by = 'price' AND UPPER(p_sort_dir) = 'ASC' THEN p.base_price END ASC,
-      CASE WHEN p_sort_by = 'price' AND UPPER(p_sort_dir) = 'DESC' THEN p.base_price END DESC,
-      CASE WHEN p_sort_by = 'name' AND UPPER(p_sort_dir) = 'ASC' THEN p.name END ASC,
-      CASE WHEN p_sort_by = 'name' AND UPPER(p_sort_dir) = 'DESC' THEN p.name END DESC,
-      p.created_at DESC; -- Default fallback sorting
+    -- Sắp xếp theo Giá bán (Ép kiểu số)
+    CASE WHEN p_sort_by = 'price' AND UPPER(p_sort_dir) = 'ASC' THEN p.base_price END ASC,
+    CASE WHEN p_sort_by = 'price' AND UPPER(p_sort_dir) = 'DESC' THEN p.base_price END DESC,
+    
+    -- Sắp xếp theo Tên
+    CASE WHEN p_sort_by = 'name' AND UPPER(p_sort_dir) = 'ASC' THEN p.name END ASC,
+    CASE WHEN p_sort_by = 'name' AND UPPER(p_sort_dir) = 'DESC' THEN p.name END DESC,
+    
+    -- Sắp xếp theo Ngày tạo (Đảm bảo có cả ASC và DESC)
+    CASE WHEN p_sort_by = 'created_at' AND UPPER(p_sort_dir) = 'ASC' THEN p.created_at END ASC,
+    CASE WHEN p_sort_by = 'created_at' AND UPPER(p_sort_dir) = 'DESC' THEN p.created_at END DESC,
+    
+    -- Mặc định nếu không truyền hoặc lỗi tham số
+    p.created_at DESC;
 END //
 
 -- =========================================================================
