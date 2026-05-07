@@ -25,10 +25,6 @@ BEGIN
         IF v_current_parent = NEW.category_id THEN
             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error: Category loop detected on insert!';
         END IF;
-
-        IF NOT EXISTS (SELECT 1 FROM CATEGORY WHERE category_id = v_current_parent) THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid category hierarchy: parent does not exist!';
-        END IF;
         
         SELECT parent_id INTO v_current_parent FROM CATEGORY WHERE category_id = v_current_parent;
     END WHILE;
@@ -53,10 +49,6 @@ BEGIN
         IF v_current_parent = NEW.category_id THEN
             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error: Category loop detected on update!';
         END IF;
-
-        IF NOT EXISTS (SELECT 1 FROM CATEGORY WHERE category_id = v_current_parent) THEN
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid category hierarchy: parent does not exist!';
-        END IF;
         
         SELECT parent_id INTO v_current_parent FROM CATEGORY WHERE category_id = v_current_parent;
     END WHILE;
@@ -75,10 +67,6 @@ BEGIN
     DECLARE v_is_deleted BOOLEAN;
     DECLARE v_product_deleted BOOLEAN;
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_current_stock = NULL;
-
-    IF NEW.quantity <= 0 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Quantity must be greater than 0!';
-    END IF;
 
     IF NOT EXISTS (SELECT 1 FROM CUSTOMER_ORDER WHERE order_id = NEW.order_id AND is_deleted = FALSE) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid order: Order does not exist or has been deleted!';
@@ -110,10 +98,6 @@ BEGIN
     DECLARE v_is_deleted BOOLEAN;
     DECLARE v_product_deleted BOOLEAN;
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_current_stock = NULL;
-
-    IF NEW.quantity <= 0 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Quantity must be greater than 0!';
-    END IF;
 
     IF NOT EXISTS (SELECT 1 FROM CUSTOMER_ORDER WHERE order_id = NEW.order_id AND is_deleted = FALSE) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid order: Order does not exist or has been deleted!';

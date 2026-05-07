@@ -6,7 +6,7 @@ DELIMITER //
 DROP FUNCTION IF EXISTS fn_Calculate_Actual_Loyalty_Points //
 CREATE FUNCTION fn_Calculate_Actual_Loyalty_Points(p_buyer_id VARCHAR(36)) 
 RETURNS INT
-DETERMINISTIC
+NOT DETERMINISTIC
 READS SQL DATA
 BEGIN
     DECLARE v_total_points INT DEFAULT 0;
@@ -21,7 +21,10 @@ BEGIN
     DECLARE cur_orders CURSOR FOR 
         SELECT total_amount 
         FROM CUSTOMER_ORDER 
-        WHERE buyer_id = p_buyer_id AND status = 'completed' AND is_deleted = FALSE;
+        WHERE buyer_id = p_buyer_id 
+          AND status = 'completed' 
+          AND is_deleted = FALSE 
+          AND total_amount IS NOT NULL;
         
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = TRUE;
 
@@ -61,7 +64,7 @@ END //
 DROP FUNCTION IF EXISTS fn_Calculate_Store_Average_Rating //
 CREATE FUNCTION fn_Calculate_Store_Average_Rating(p_store_id VARCHAR(36)) 
 RETURNS DECIMAL(3,2)
-DETERMINISTIC
+NOT DETERMINISTIC
 READS SQL DATA
 BEGIN
     DECLARE v_sum_rating INT DEFAULT 0;
@@ -110,12 +113,8 @@ BEGIN
     -- IF statements for calculations (prevent division by zero)
     IF v_count_rating > 0 THEN
         SET v_avg_rating = v_sum_rating / v_count_rating;
-    END IF;
-
-    IF v_avg_rating < 0.00 THEN
+    ELSE
         SET v_avg_rating = 0.00;
-    ELSEIF v_avg_rating > 5.00 THEN
-        SET v_avg_rating = 5.00;
     END IF;
 
     RETURN ROUND(v_avg_rating, 2);

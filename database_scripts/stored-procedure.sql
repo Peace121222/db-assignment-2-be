@@ -128,7 +128,6 @@ BEGIN
         FOR UPDATE;
 
         IF v_is_in_active_order > 0 THEN
-            ROLLBACK;
             SIGNAL SQLSTATE '45000' 
             SET MESSAGE_TEXT = 'Business Rule Violation: Cannot delete product currently in active/shipping orders!';
         END IF;
