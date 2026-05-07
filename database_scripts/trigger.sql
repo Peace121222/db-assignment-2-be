@@ -15,7 +15,7 @@ CREATE TRIGGER trg_Prevent_Category_Loop_Insert
 BEFORE INSERT ON CATEGORY
 FOR EACH ROW
 BEGIN
-    DECLARE v_current_parent CHAR(36);
+    DECLARE v_current_parent VARCHAR(36);
     DECLARE v_depth INT DEFAULT 0;
     SET v_current_parent = NEW.parent_id;
     
@@ -39,7 +39,7 @@ CREATE TRIGGER trg_Prevent_Category_Loop_Update
 BEFORE UPDATE ON CATEGORY
 FOR EACH ROW
 BEGIN
-    DECLARE v_current_parent CHAR(36);
+    DECLARE v_current_parent VARCHAR(36);
     DECLARE v_depth INT DEFAULT 0;
     SET v_current_parent = NEW.parent_id;
     
