@@ -49,7 +49,7 @@ BEGIN
         -- IF statements for calculations
         IF v_order_amount < CONST_TIER1_THRESHOLD THEN
             SET v_total_points = v_total_points + FLOOR(v_order_amount / CONST_POINT_UNIT);
-        ELSEIF v_order_amount BETWEEN CONST_TIER1_THRESHOLD AND CONST_TIER2_THRESHOLD THEN
+        ELSEIF v_order_amount >= CONST_TIER1_THRESHOLD AND v_order_amount < CONST_TIER2_THRESHOLD THEN
             SET v_total_points = v_total_points + FLOOR((v_order_amount / CONST_POINT_UNIT) * 1.5);
         ELSE
             SET v_total_points = v_total_points + FLOOR((v_order_amount / CONST_POINT_UNIT) * 2) + CONST_BONUS_POINTS;
@@ -78,9 +78,11 @@ BEGIN
         SELECT r.rating
         FROM REVIEW r
         JOIN CUSTOMER_ORDER co ON r.order_id = co.order_id
+        JOIN STORE s ON co.store_id = s.store_id
         WHERE co.store_id = p_store_id 
           AND co.status = 'completed'
           AND co.is_deleted = FALSE
+          AND s.is_deleted = FALSE
           AND r.rating IS NOT NULL 
           AND r.is_deleted = FALSE;
 
