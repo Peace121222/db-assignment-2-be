@@ -181,7 +181,8 @@ CREATE TABLE CAMPAIGN (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL DEFAULT NULL,
-    FOREIGN KEY (created_by) REFERENCES ADMIN(account_id)
+    FOREIGN KEY (created_by) REFERENCES ADMIN(account_id),
+    CONSTRAINT chk_campaign_date CHECK (start_at < end_at)
 );
 
 CREATE TABLE PROMOTION_ITEM (
@@ -223,7 +224,7 @@ CREATE TABLE CUSTOMER_ORDER (
     buyer_id VARCHAR(36) NOT NULL,
     store_id VARCHAR(36) NOT NULL,
     order_sn VARCHAR(32) UNIQUE,
-    total_amount DECIMAL(15,2) DEFAULT 0,
+    total_amount DECIMAL(15,2) DEFAULT 0 CHECK (total_amount >= 0),
     shipping_address_snapshot JSON NOT NULL,
     status ENUM('pending', 'paid', 'shipping', 'completed', 'cancelled') DEFAULT 'pending',
     is_deleted BOOLEAN DEFAULT FALSE,
@@ -279,7 +280,8 @@ CREATE TABLE REVIEW (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL DEFAULT NULL,
     FOREIGN KEY (order_id, variant_id) REFERENCES ORDER_ITEM(order_id, variant_id),
-    FOREIGN KEY (buyer_id) REFERENCES BUYER(account_id)
+    FOREIGN KEY (buyer_id) REFERENCES BUYER(account_id),
+    CONSTRAINT uq_review_order_variant UNIQUE (order_id, variant_id)
 );
 
 CREATE TABLE REVIEW_MEDIA (

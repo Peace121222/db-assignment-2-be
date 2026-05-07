@@ -2,7 +2,7 @@ USE db_assignment_2;
 
 DELIMITER //
 
--- Insert a new product into the system
+-- Insert a new product into the system safely
 DROP PROCEDURE IF EXISTS sp_Insert_Product //
 CREATE PROCEDURE sp_Insert_Product(
     IN p_product_id VARCHAR(36),
@@ -13,8 +13,8 @@ CREATE PROCEDURE sp_Insert_Product(
     IN p_base_price DECIMAL(15,2)
 )
 BEGIN
-    IF p_product_id IS NULL OR LENGTH(p_product_id) <> 36 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Data Validation Error: Invalid Product ID (Must be 36-char UUID)!';
+    IF p_product_id NOT REGEXP '^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Data Validation Error: Invalid Product ID (Must be UUID format)!';
     END IF;
 
     IF p_store_id IS NULL OR p_category_id IS NULL THEN
@@ -93,7 +93,7 @@ BEGIN
       AND is_deleted = FALSE;
 END //
 
--- Soft-delete a product and its associated variants safely using transactions
+-- Soft-delete a product (Transaction safe with row locking)
 DROP PROCEDURE IF EXISTS sp_delete_product //
 CREATE PROCEDURE sp_delete_product(
     IN p_product_id VARCHAR(36)
@@ -107,7 +107,7 @@ BEGIN
         RESIGNAL;
     END;
 
-    IF p_product_id IS NULL OR LENGTH(p_product_id) <> 36 THEN
+    IF p_product_id NOT REGEXP '^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$' THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Data Validation Error: Invalid Product ID format!';
     END IF;
 
@@ -115,21 +115,24 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Deletion Error: Product does not exist or is already deleted!';
     END IF;
 
-    SELECT COUNT(*) INTO v_is_in_active_order
-    FROM PRODUCT_VARIANT pv
-    JOIN ORDER_ITEM oi ON pv.variant_id = oi.variant_id
-    JOIN CUSTOMER_ORDER co ON oi.order_id = co.order_id
-    WHERE pv.product_id = p_product_id 
-      AND pv.is_deleted = FALSE
-      AND co.is_deleted = FALSE
-      AND co.status IN ('pending', 'paid', 'shipping');
-
-    IF v_is_in_active_order > 0 THEN
-        SIGNAL SQLSTATE '45000' 
-        SET MESSAGE_TEXT = 'Business Rule Violation: Cannot delete product currently in active/shipping orders. Complete or cancel orders first!';
-    END IF;
-
     START TRANSACTION;
+        -- Use FOR UPDATE to lock variants, preventing race conditions with new incoming orders
+        SELECT COUNT(*) INTO v_is_in_active_order
+        FROM PRODUCT_VARIANT pv
+        JOIN ORDER_ITEM oi ON pv.variant_id = oi.variant_id
+        JOIN CUSTOMER_ORDER co ON oi.order_id = co.order_id
+        WHERE pv.product_id = p_product_id 
+          AND pv.is_deleted = FALSE
+          AND co.is_deleted = FALSE
+          AND co.status IN ('pending', 'paid', 'shipping')
+        FOR UPDATE;
+
+        IF v_is_in_active_order > 0 THEN
+            ROLLBACK;
+            SIGNAL SQLSTATE '45000' 
+            SET MESSAGE_TEXT = 'Business Rule Violation: Cannot delete product currently in active/shipping orders!';
+        END IF;
+
         UPDATE PRODUCT
         SET is_deleted = TRUE,
             deleted_at = CURRENT_TIMESTAMP,
