@@ -225,6 +225,7 @@ CREATE TABLE CUSTOMER_ORDER (
     store_id VARCHAR(36) NOT NULL,
     order_sn VARCHAR(32) UNIQUE,
     total_amount DECIMAL(15,2) DEFAULT 0 CHECK (total_amount >= 0),
+    shipping_fee DECIMAL(15,2) DEFAULT 0 CHECK (shipping_fee >= 0),
     shipping_address_snapshot JSON NOT NULL,
     status ENUM('pending', 'paid', 'shipping', 'completed', 'cancelled') DEFAULT 'pending',
     is_deleted BOOLEAN DEFAULT FALSE,
@@ -238,12 +239,16 @@ CREATE TABLE ORDER_ITEM (
     order_id VARCHAR(36),
     variant_id VARCHAR(36),
     quantity INT NOT NULL CHECK (quantity > 0),
+    original_price DECIMAL(15,2) NOT NULL CHECK (original_price >= 0),
+    discount_amount DECIMAL(15,2) DEFAULT 0 CHECK (discount_amount >= 0),
     price_at_buy DECIMAL(15,2) NOT NULL CHECK (price_at_buy >= 0),
+    voucher_id VARCHAR(36) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (order_id, variant_id),
     FOREIGN KEY (order_id) REFERENCES CUSTOMER_ORDER(order_id),
-    FOREIGN KEY (variant_id) REFERENCES PRODUCT_VARIANT(variant_id)
+    FOREIGN KEY (variant_id) REFERENCES PRODUCT_VARIANT(variant_id),
+    FOREIGN KEY (voucher_id) REFERENCES VOUCHER(voucher_id)
 );
 
 CREATE TABLE PAYMENT (
@@ -251,7 +256,7 @@ CREATE TABLE PAYMENT (
     order_id VARCHAR(36) UNIQUE,
     method ENUM('cod', 'e-wallet', 'credit_card'),
     amount DECIMAL(15,2) NOT NULL CHECK (amount >= 0),
-    status ENUM('pending', 'success', 'failed'),
+    status ENUM('pending', 'success', 'failed') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (order_id) REFERENCES CUSTOMER_ORDER(order_id)
@@ -301,7 +306,7 @@ CREATE TABLE RETURN_REQUEST (
     variant_id VARCHAR(36) NOT NULL,
     quantity INT NOT NULL DEFAULT 1 CHECK (quantity > 0),
     reason TEXT,
-    status ENUM('pending', 'approved', 'rejected'),
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (order_id, variant_id) REFERENCES ORDER_ITEM(order_id, variant_id)

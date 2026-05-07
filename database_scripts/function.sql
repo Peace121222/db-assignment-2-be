@@ -78,11 +78,9 @@ BEGIN
         SELECT r.rating
         FROM REVIEW r
         JOIN CUSTOMER_ORDER co ON r.order_id = co.order_id
-        JOIN STORE s ON co.store_id = s.store_id
         WHERE co.store_id = p_store_id 
           AND co.status = 'completed'
           AND co.is_deleted = FALSE
-          AND s.is_deleted = FALSE
           AND r.rating IS NOT NULL 
           AND r.is_deleted = FALSE;
 
