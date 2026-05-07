@@ -72,7 +72,6 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid order: Order does not exist or has been deleted!';
     END IF;
 
-    -- Using FOR UPDATE to prevent race conditions during checkout
     SELECT pv.stock, pv.is_deleted, p.is_deleted
     INTO v_current_stock, v_is_deleted, v_product_deleted
     FROM PRODUCT_VARIANT pv
@@ -135,7 +134,7 @@ BEGIN
     UPDATE PRODUCT_VARIANT SET stock = stock - NEW.quantity WHERE variant_id = NEW.variant_id;
 
     UPDATE CUSTOMER_ORDER
-    SET total_amount = COALESCE((SELECT SUM(quantity * price_at_buy) FROM ORDER_ITEM WHERE order_id = NEW.order_id), 0)
+    SET total_amount = COALESCE((SELECT SUM(quantity * price_at_buy) FROM ORDER_ITEM WHERE order_id = NEW.order_id), 0) + COALESCE(shipping_fee, 0)
     WHERE order_id = NEW.order_id AND is_deleted = FALSE;
 END //
 
@@ -152,12 +151,12 @@ BEGIN
     END IF;
 
     UPDATE CUSTOMER_ORDER
-    SET total_amount = COALESCE((SELECT SUM(quantity * price_at_buy) FROM ORDER_ITEM WHERE order_id = NEW.order_id), 0)
+    SET total_amount = COALESCE((SELECT SUM(quantity * price_at_buy) FROM ORDER_ITEM WHERE order_id = NEW.order_id), 0) + COALESCE(shipping_fee, 0)
     WHERE order_id = NEW.order_id AND is_deleted = FALSE;
 
     IF NEW.order_id <> OLD.order_id THEN
         UPDATE CUSTOMER_ORDER
-        SET total_amount = COALESCE((SELECT SUM(quantity * price_at_buy) FROM ORDER_ITEM WHERE order_id = OLD.order_id), 0)
+        SET total_amount = COALESCE((SELECT SUM(quantity * price_at_buy) FROM ORDER_ITEM WHERE order_id = OLD.order_id), 0) + COALESCE(shipping_fee, 0)
         WHERE order_id = OLD.order_id AND is_deleted = FALSE;
     END IF;
 END //
@@ -170,7 +169,7 @@ BEGIN
     UPDATE PRODUCT_VARIANT SET stock = stock + OLD.quantity WHERE variant_id = OLD.variant_id;
 
     UPDATE CUSTOMER_ORDER
-    SET total_amount = COALESCE((SELECT SUM(quantity * price_at_buy) FROM ORDER_ITEM WHERE order_id = OLD.order_id), 0)
+    SET total_amount = COALESCE((SELECT SUM(quantity * price_at_buy) FROM ORDER_ITEM WHERE order_id = OLD.order_id), 0) + COALESCE(shipping_fee, 0)
     WHERE order_id = OLD.order_id AND is_deleted = FALSE;
 END //
 
