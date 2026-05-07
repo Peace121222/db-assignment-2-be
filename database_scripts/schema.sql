@@ -79,7 +79,8 @@ CREATE TABLE CATEGORY (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL DEFAULT NULL,
-    FOREIGN KEY (parent_id) REFERENCES CATEGORY(category_id)
+    FOREIGN KEY (parent_id) REFERENCES CATEGORY(category_id),
+    CONSTRAINT chk_category_parent CHECK (parent_id IS NULL OR parent_id <> category_id)
 );
 
 CREATE TABLE STORE (
@@ -146,7 +147,7 @@ CREATE TABLE VOUCHER (
     max_discount_val DECIMAL(15,2),
     min_spend DECIMAL(15,2) DEFAULT 0,
     usage_limit INT DEFAULT 100,
-    usage_count INT DEFAULT 0,
+    usage_count INT DEFAULT 0 CHECK (usage_count >= 0 AND usage_count <= usage_limit),
     exp_date DATETIME,
     is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -186,7 +187,7 @@ CREATE TABLE CAMPAIGN (
 CREATE TABLE PROMOTION_ITEM (
     campaign_id VARCHAR(36),
     product_id VARCHAR(36),
-    promo_price DECIMAL(15,2),
+    promo_price DECIMAL(15,2) CHECK (promo_price >= 0),
     is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -248,7 +249,7 @@ CREATE TABLE PAYMENT (
     payment_id VARCHAR(36) PRIMARY KEY,
     order_id VARCHAR(36) UNIQUE,
     method ENUM('cod', 'e-wallet', 'credit_card'),
-    amount DECIMAL(15,2) CHECK (amount >= 0),
+    amount DECIMAL(15,2) NOT NULL CHECK (amount >= 0),
     status ENUM('pending', 'success', 'failed'),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -303,3 +304,9 @@ CREATE TABLE RETURN_REQUEST (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (order_id, variant_id) REFERENCES ORDER_ITEM(order_id, variant_id)
 );
+
+CREATE INDEX idx_product_store ON PRODUCT(store_id);
+CREATE INDEX idx_product_category ON PRODUCT(category_id);
+CREATE INDEX idx_variant_product ON PRODUCT_VARIANT(product_id);
+CREATE INDEX idx_orderitem_variant ON ORDER_ITEM(variant_id);
+CREATE INDEX idx_order_buyer ON CUSTOMER_ORDER(buyer_id);

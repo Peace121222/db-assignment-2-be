@@ -2,7 +2,7 @@ USE db_assignment_2;
 
 DELIMITER //
 
--- Insert a new product into the system safely using transactions
+-- Insert a new product into the system
 DROP PROCEDURE IF EXISTS sp_Insert_Product //
 CREATE PROCEDURE sp_Insert_Product(
     IN p_product_id VARCHAR(36),
@@ -13,12 +13,6 @@ CREATE PROCEDURE sp_Insert_Product(
     IN p_base_price DECIMAL(15,2)
 )
 BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION 
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
-
     IF p_product_id IS NULL OR LENGTH(p_product_id) <> 36 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Data Validation Error: Invalid Product ID (Must be 36-char UUID)!';
     END IF;
@@ -31,7 +25,7 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Data Validation Error: Product name cannot be empty or exceed 255 chars!';
     END IF;
 
-    IF p_base_price < 0 OR p_base_price > 1000000000 THEN
+    IF p_base_price IS NULL OR p_base_price < 0 OR p_base_price > 1000000000 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Data Validation Error: Base price must be between 0 and 1,000,000,000 VND!';
     END IF;
 
@@ -47,10 +41,8 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Data Validation Error: Category does not exist or has been deleted!';
     END IF;
 
-    START TRANSACTION;
-        INSERT INTO PRODUCT (product_id, store_id, category_id, name, description, base_price, status, is_deleted)
-        VALUES (p_product_id, p_store_id, p_category_id, TRIM(p_name), p_description, p_base_price, 'active', FALSE);
-    COMMIT;
+    INSERT INTO PRODUCT (product_id, store_id, category_id, name, description, base_price, status, is_deleted)
+    VALUES (p_product_id, p_store_id, p_category_id, TRIM(p_name), p_description, p_base_price, 'active', FALSE);
 END //
 
 -- Update an existing product's details
@@ -97,10 +89,11 @@ BEGIN
         description = COALESCE(p_description, description),
         base_price  = COALESCE(p_base_price, base_price),
         status      = COALESCE(p_status_val, status)
-    WHERE product_id = p_product_id;
+    WHERE product_id = p_product_id
+      AND is_deleted = FALSE;
 END //
 
--- Soft-delete a product and its associated variants
+-- Soft-delete a product and its associated variants safely using transactions
 DROP PROCEDURE IF EXISTS sp_delete_product //
 CREATE PROCEDURE sp_delete_product(
     IN p_product_id VARCHAR(36)
@@ -128,6 +121,7 @@ BEGIN
     JOIN CUSTOMER_ORDER co ON oi.order_id = co.order_id
     WHERE pv.product_id = p_product_id 
       AND pv.is_deleted = FALSE
+      AND co.is_deleted = FALSE
       AND co.status IN ('pending', 'paid', 'shipping');
 
     IF v_is_in_active_order > 0 THEN

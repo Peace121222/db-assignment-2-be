@@ -63,7 +63,7 @@ BEGIN
     p.created_at DESC;
 END //
 
--- Generates a detailed sales performance report for products within a store
+-- Generates a detailed sales performance report for products within a store (Note: Requires MySQL 8+ for Window Functions)
 DROP PROCEDURE IF EXISTS sp_Get_Product_Sales_Performance //
 CREATE PROCEDURE sp_Get_Product_Sales_Performance(
     IN p_store_id VARCHAR(36),
@@ -100,6 +100,7 @@ BEGIN
           AND p.is_deleted = FALSE
           AND c.is_deleted = FALSE
           AND pv.is_deleted = FALSE
+          AND co.is_deleted = FALSE
           AND co.status = 'completed' 
           AND (p_start_date IS NULL OR co.created_at >= p_start_date)
           AND (p_end_date IS NULL OR co.created_at < DATE_ADD(p_end_date, INTERVAL 1 DAY))
