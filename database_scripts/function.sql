@@ -77,8 +77,7 @@ BEGIN
     DECLARE cur_avg CURSOR FOR 
         SELECT r.rating
         FROM REVIEW r
-        JOIN ORDER_ITEM oi ON r.order_id = oi.order_id AND r.variant_id = oi.variant_id
-        JOIN CUSTOMER_ORDER co ON oi.order_id = co.order_id
+        JOIN CUSTOMER_ORDER co ON r.order_id = co.order_id
         WHERE co.store_id = p_store_id 
           AND co.status = 'completed'
           AND co.is_deleted = FALSE
