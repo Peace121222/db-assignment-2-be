@@ -1,9 +1,41 @@
-CREATE DATABASE IF NOT EXISTS db_assignment_2 CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS db_assignment_2
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
 USE db_assignment_2;
 
 SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS ADDRESS, REVIEW_MEDIA, PRODUCT_MEDIA, RETURN_REQUEST, REVIEW, SHIPMENT, PAYMENT, ORDER_ITEM, CUSTOMER_ORDER, CART_ITEM, CART, PROMOTION_ITEM, CAMPAIGN, VOUCHER_WALLET, VOUCHER, PRODUCT_VARIANT, PRODUCT, STORE, CATEGORY, ADMIN, SELLER, BUYER, USER_ACCOUNT;
+
+DROP TABLE IF EXISTS
+    ADDRESS,
+    REVIEW_MEDIA,
+    PRODUCT_MEDIA,
+    RETURN_REQUEST,
+    REVIEW,
+    SHIPMENT,
+    PAYMENT,
+    ORDER_ITEM,
+    CUSTOMER_ORDER,
+    CART_ITEM,
+    CART,
+    PROMOTION_ITEM,
+    CAMPAIGN,
+    VOUCHER_WALLET,
+    VOUCHER,
+    PRODUCT_VARIANT,
+    PRODUCT,
+    STORE,
+    CATEGORY,
+    ADMIN,
+    SELLER,
+    BUYER,
+    USER_ACCOUNT;
+
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- =========================================================
+-- 1) USER / ROLE TABLES
+-- =========================================================
 
 CREATE TABLE USER_ACCOUNT (
     account_id VARCHAR(36) PRIMARY KEY,
@@ -18,6 +50,8 @@ CREATE TABLE USER_ACCOUNT (
     deleted_at TIMESTAMP NULL DEFAULT NULL
 );
 
+-- Address is kept as a separate table to normalize the composite address
+-- from Assignment 1 and support multiple delivery addresses per account.
 CREATE TABLE ADDRESS (
     address_id VARCHAR(36) PRIMARY KEY,
     account_id VARCHAR(36) NOT NULL,
@@ -71,6 +105,10 @@ CREATE TABLE ADMIN (
     FOREIGN KEY (account_id) REFERENCES USER_ACCOUNT(account_id) ON DELETE CASCADE
 );
 
+-- =========================================================
+-- 2) CATEGORY / STORE / PRODUCT
+-- =========================================================
+
 CREATE TABLE CATEGORY (
     category_id VARCHAR(36) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -80,7 +118,9 @@ CREATE TABLE CATEGORY (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL DEFAULT NULL,
     FOREIGN KEY (parent_id) REFERENCES CATEGORY(category_id),
-    CONSTRAINT chk_category_parent CHECK (parent_id IS NULL OR parent_id <> category_id)
+    CONSTRAINT chk_category_parent CHECK (
+        parent_id IS NULL OR parent_id <> category_id
+    )
 );
 
 CREATE TABLE STORE (
@@ -138,6 +178,10 @@ CREATE TABLE PRODUCT_MEDIA (
     FOREIGN KEY (product_id) REFERENCES PRODUCT(product_id) ON DELETE CASCADE
 );
 
+-- =========================================================
+-- 3) VOUCHER / CAMPAIGN / PROMOTION
+-- =========================================================
+
 CREATE TABLE VOUCHER (
     voucher_id VARCHAR(36) PRIMARY KEY,
     store_id VARCHAR(36) NULL,
@@ -155,7 +199,8 @@ CREATE TABLE VOUCHER (
     deleted_at TIMESTAMP NULL DEFAULT NULL,
     FOREIGN KEY (store_id) REFERENCES STORE(store_id),
     CONSTRAINT chk_voucher_discount CHECK (
-        (discount_type = 'percent' AND discount_val > 0 AND discount_val <= 100) OR 
+        (discount_type = 'percent' AND discount_val > 0 AND discount_val <= 100)
+        OR
         (discount_type = 'fixed' AND discount_val > 0)
     )
 );
@@ -189,6 +234,7 @@ CREATE TABLE PROMOTION_ITEM (
     campaign_id VARCHAR(36),
     product_id VARCHAR(36),
     promo_price DECIMAL(15,2) CHECK (promo_price >= 0),
+    campaign_stock_limit INT DEFAULT 0 CHECK (campaign_stock_limit >= 0),
     is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -197,6 +243,10 @@ CREATE TABLE PROMOTION_ITEM (
     FOREIGN KEY (campaign_id) REFERENCES CAMPAIGN(campaign_id),
     FOREIGN KEY (product_id) REFERENCES PRODUCT(product_id)
 );
+
+-- =========================================================
+-- 4) CART / ORDER / PAYMENT / SHIPMENT
+-- =========================================================
 
 CREATE TABLE CART (
     cart_id VARCHAR(36) PRIMARY KEY,
@@ -273,6 +323,10 @@ CREATE TABLE SHIPMENT (
     FOREIGN KEY (order_id) REFERENCES CUSTOMER_ORDER(order_id)
 );
 
+-- =========================================================
+-- 5) REVIEW / RETURN REQUEST
+-- =========================================================
+
 CREATE TABLE REVIEW (
     review_id VARCHAR(36) PRIMARY KEY,
     order_id VARCHAR(36),
@@ -304,16 +358,49 @@ CREATE TABLE RETURN_REQUEST (
     request_id VARCHAR(36) PRIMARY KEY,
     order_id VARCHAR(36) NOT NULL,
     variant_id VARCHAR(36) NOT NULL,
+    admin_id VARCHAR(36) NULL,
     quantity INT NOT NULL DEFAULT 1 CHECK (quantity > 0),
+    requested_refund_amount DECIMAL(15,2) NOT NULL DEFAULT 0 CHECK (requested_refund_amount >= 0),
     reason TEXT,
+    handling_result TEXT,
     status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (order_id, variant_id) REFERENCES ORDER_ITEM(order_id, variant_id)
+    FOREIGN KEY (order_id, variant_id) REFERENCES ORDER_ITEM(order_id, variant_id),
+    FOREIGN KEY (admin_id) REFERENCES ADMIN(account_id)
 );
+
+-- =========================================================
+-- 6) INDEXES
+-- =========================================================
+
+CREATE INDEX idx_address_account ON ADDRESS(account_id);
+
+CREATE INDEX idx_store_seller ON STORE(seller_id);
 
 CREATE INDEX idx_product_store ON PRODUCT(store_id);
 CREATE INDEX idx_product_category ON PRODUCT(category_id);
+CREATE INDEX idx_product_status_deleted ON PRODUCT(status, is_deleted);
+
 CREATE INDEX idx_variant_product ON PRODUCT_VARIANT(product_id);
-CREATE INDEX idx_orderitem_variant ON ORDER_ITEM(variant_id);
+CREATE INDEX idx_variant_deleted_stock ON PRODUCT_VARIANT(is_deleted, stock);
+
+CREATE INDEX idx_voucher_store ON VOUCHER(store_id);
+CREATE INDEX idx_voucher_exp_date ON VOUCHER(exp_date);
+
+CREATE INDEX idx_campaign_creator ON CAMPAIGN(created_by);
+
 CREATE INDEX idx_order_buyer ON CUSTOMER_ORDER(buyer_id);
+CREATE INDEX idx_order_store ON CUSTOMER_ORDER(store_id);
+CREATE INDEX idx_order_status_deleted ON CUSTOMER_ORDER(status, is_deleted);
+
+CREATE INDEX idx_orderitem_variant ON ORDER_ITEM(variant_id);
+CREATE INDEX idx_orderitem_voucher ON ORDER_ITEM(voucher_id);
+
+CREATE INDEX idx_payment_order_status ON PAYMENT(order_id, status);
+CREATE INDEX idx_shipment_order_status ON SHIPMENT(order_id, status);
+
+CREATE INDEX idx_review_buyer ON REVIEW(buyer_id);
+
+CREATE INDEX idx_return_admin ON RETURN_REQUEST(admin_id);
+CREATE INDEX idx_return_status ON RETURN_REQUEST(status);
