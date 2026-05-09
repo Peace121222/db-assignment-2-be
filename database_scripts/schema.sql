@@ -191,7 +191,7 @@ CREATE TABLE VOUCHER (
     max_discount_val DECIMAL(15,2),
     min_spend DECIMAL(15,2) DEFAULT 0,
     usage_limit INT DEFAULT 100,
-    usage_count INT DEFAULT 0 CHECK (usage_count >= 0 AND usage_count <= usage_limit),
+    usage_count INT DEFAULT 0,
     exp_date DATETIME,
     is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -199,10 +199,10 @@ CREATE TABLE VOUCHER (
     deleted_at TIMESTAMP NULL DEFAULT NULL,
     FOREIGN KEY (store_id) REFERENCES STORE(store_id),
     CONSTRAINT chk_voucher_discount CHECK (
-        (discount_type = 'percent' AND discount_val > 0 AND discount_val <= 100)
-        OR
+        (discount_type = 'percent' AND discount_val > 0 AND discount_val <= 100) OR 
         (discount_type = 'fixed' AND discount_val > 0)
-    )
+    ),
+    CONSTRAINT chk_voucher_usage CHECK (usage_count >= 0 AND usage_count <= usage_limit)
 );
 
 CREATE TABLE VOUCHER_WALLET (
